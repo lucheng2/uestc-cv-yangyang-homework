@@ -12,7 +12,7 @@ if not os.path.exists(resultsDir):
     os.mkdir(resultsDir)
 
 test_image = load_image('../data/cat.bmp')
-test_image = rescale(test_image, 0.7, mode='reflect', multichannel=True)
+# test_image = rescale(test_image, 0.7, mode='reflect', multichannel=True)
 
 '''
 Identity filter
@@ -41,9 +41,11 @@ done = save_image(resultsDir + os.sep + 'blur_image.jpg', blur_image)
 
 '''
 Large blur
-This blur would be slow to do directly, so we instead use the fact that Gaussian blurs are separable and blur sequentially in each direction.
+This blur would be slow to do directly, so we instead use the fact that 
+Gaussian blurs are separable and blur sequentially in each direction.
 '''
-# generate a 1x(2k+1) gaussian kernel with mean=0 and sigma = s, see https://stackoverflow.com/questions/17190649/how-to-obtain-a-gaussian-filter-in-python
+# generate a 1x(2k+1) gaussian kernel with mean=0 and sigma = s,
+# see https://stackoverflow.com/questions/17190649/how-to-obtain-a-gaussian-filter-in-python
 s, k = 10, 12
 large_1d_blur_filter = np.asarray(
     [exp(-z*z/(2*s*s))/sqrt(2*pi*s*s) for z in range(-k, k+1)], dtype=np.float32)

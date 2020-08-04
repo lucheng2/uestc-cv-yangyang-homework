@@ -1,0 +1,2 @@
+- `install required packages`
+- pip install -r requirement.txt
