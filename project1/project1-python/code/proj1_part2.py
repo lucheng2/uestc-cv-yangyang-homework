@@ -1,9 +1,8 @@
-import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
-from helpers import vis_hybrid_image, load_image, save_image
+import numpy as np
 
-from student import my_imfilter, gen_hybrid_image
+from helpers import vis_hybrid_image, load_image, save_image
+from student import gen_hybrid_image
 
 # Before trying to construct hybrid images, it is suggested that you
 # implement my_imfilter in helpers.py and then debug it using proj1_part1.py

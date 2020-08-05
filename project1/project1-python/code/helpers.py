@@ -34,8 +34,8 @@ def vis_hybrid_image(hybrid_image):
 
 def load_image(path):
     image = io.imread(path)
-    print(image)
-    return image
+    # print(image)
+    return img_as_float32(image)
 
 
 def save_image(path, im):
