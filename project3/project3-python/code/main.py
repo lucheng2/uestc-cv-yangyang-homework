@@ -205,8 +205,8 @@ if __name__ == '__main__':
     # create the command line parser
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-f', '--feature', default='placeholder', help='Either placeholder, tiny_image, or bag_of_words')
-    parser.add_argument('-c', '--classifier', default='placeholder', help='Either placeholder, nearest_neighbor, or support_vector_machine')
+    parser.add_argument('-f', '--feature', default='bag_of_words', help='Either placeholder, tiny_image, or bag_of_words')
+    parser.add_argument('-c', '--classifier', default='support_vector_machine', help='Either placeholder, nearest_neighbor, or support_vector_machine')
 
     args = parser.parse_args()
     projSceneRecBoW(args.feature, args.classifier)

@@ -1,0 +1,4 @@
+- `run main`
+- python main.py --pair notre_dame
+- python main.py --pair mt_rushmore
+- python main.py --pair e_gaudi

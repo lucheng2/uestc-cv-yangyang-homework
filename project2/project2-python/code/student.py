@@ -1,7 +1,11 @@
+import math
+
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import ndimage
 from skimage import filters, feature, img_as_int
 from skimage.measure import regionprops
+from sklearn.neighbors import NearestNeighbors, BallTree
 
 
 def get_interest_points(image, feature_width):
@@ -48,10 +52,45 @@ def get_interest_points(image, feature_width):
     # TODO: Your implementation here! See block comments and the project webpage for instructions
 
     # These are placeholders - replace with the coordinates of your interest points!
-    xs = np.zeros(1)
-    ys = np.zeros(1)
+    # xs = np.zeros(1)
+    # ys = np.zeros(1)
 
-    return xs, ys
+    alpha = 0.04
+    ix = ndimage.sobel(image, 0)
+    iy = ndimage.sobel(image, 1)
+    ix2 = ix * ix
+    iy2 = iy * iy
+    ixy = ix * iy
+    ix2 = ndimage.gaussian_filter(ix2, sigma=2)
+    iy2 = ndimage.gaussian_filter(iy2, sigma=2)
+    ixy = ndimage.gaussian_filter(ixy, sigma=2)
+    c, l = image.shape
+    result = np.zeros((c, l))
+    har = np.zeros((c, l))
+    har_max = 0
+
+    print('looking for corner . . .')
+    for i in range(c):
+        for j in range(l):
+            # print('test ', j)
+            m = np.array([[ix2[i, j], ixy[i, j]], [ixy[i, j], iy2[i, j]]], dtype=np.float64)
+            har[i, j] = np.linalg.det(m) - alpha * (np.power(np.trace(m), 2))
+            if har[i, j] > har_max:
+                har_max = har[i, j]
+
+    threshold = 0.01
+
+    print('threshold')
+    for i in range(c - 1):
+        for j in range(l - 1):
+            if har[i, j] > threshold * har_max and har[i, j] > har[i - 1, j - 1] and har[i, j] > har[i - 1, j + 1] \
+                    and har[i, j] > har[i + 1, j - 1] and har[i, j] > har[i + 1, j + 1]:
+                result[i, j] = 1
+
+    result = np.transpose(result)
+    x, y = np.where(result == 1)
+    # confidence = [0] * har_max
+    return x, y
 
 
 def get_features(image, x, y, feature_width):
@@ -119,8 +158,42 @@ def get_features(image, x, y, feature_width):
     # TODO: Your implementation here! See block comments and the project webpage for instructions
 
     # This is a placeholder - replace this with your features!
-    features = np.zeros((1,128))
+    # features = np.zeros((1,128))
+    dx = ndimage.sobel(image, 0)
+    dy = ndimage.sobel(image, 1)
 
+    features = np.zeros([len(x), 4, 4, 8])
+
+    magnitude = np.sqrt(dx * dx + dy * dy)
+    angle = np.arctan2(dy, dx) + math.pi
+    angle = np.mod(np.floor(angle / (2 * math.pi) * 8), 8)
+    angle = angle.astype(int)
+
+    half_width = feature_width / 2
+
+    for i in range(len(x)):
+        px = x[i]
+        py = y[i]
+
+        x1 = max(px - half_width, 0)
+        x2 = min(px + half_width - 1, image.shape[0])
+        y1 = max(py - half_width, 0)
+        y2 = min(py + half_width - 1, image.shape[1])
+
+        for row in range(int(x1), int(x2)):
+            for col in range(int(y1), int(y2)):
+                if col >= 768:
+                    print()
+                cell_row = np.mod(math.floor((row - x1) / (feature_width / 4)), 4)
+                cell_col = np.mod(math.floor((col - y1) / (feature_width / 4)), 4)
+                features[i, cell_col, cell_row, angle[col, row]] = \
+                    features[i, cell_col, cell_row, angle[col, row]] \
+                    + magnitude[col, row]
+
+    features = np.resize(features, [features.shape[0], 128])
+    for i in range(features.shape[0]):
+        t = max(np.amax(np.sqrt(np.multiply(features[i], features[i]))), 1)
+        features[i] = features[i] / t
     return features
 
 
@@ -159,8 +232,23 @@ def match_features(im1_features, im2_features):
 
     # These are placeholders - replace with your matches and confidences!
 
-    matches = np.zeros((1,2))
-    confidences = np.zeros(1)
+    # matches = np.zeros((1,2))
+    # confidences = np.zeros(1)
 
+    matches = []
+    confidences = []
+    ball_tree = BallTree(im1_features, leaf_size=3)
 
+    dist, ind = ball_tree.query(im2_features, 2)
+
+    for i in range(len(ind)):
+        index = ind[i]
+        distances = dist[i]
+
+        if distances[0] / distances[1] < 0.92:
+            matches.append([index[0], i])
+            confidences.append(1 - distances[0])
+    matches = np.array(matches)
+    confidences = np.array(confidences)
     return matches, confidences
+

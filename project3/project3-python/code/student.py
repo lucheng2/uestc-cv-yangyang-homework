@@ -1,3 +1,6 @@
+import random
+
+import cv2
 import numpy as np
 import matplotlib
 from skimage.io import imread
@@ -5,6 +8,12 @@ from skimage.color import rgb2grey
 from skimage.feature import hog
 from skimage.transform import resize
 from scipy.spatial.distance import cdist
+from sklearn import svm
+from sklearn.cluster import KMeans
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors._kd_tree import KDTree
+from tqdm import tqdm
+
 
 def get_tiny_images(image_paths):
     '''
@@ -38,8 +47,17 @@ def get_tiny_images(image_paths):
     '''
 
     #TODO: Implement this function!
+    image_feats = []
+    for image_path in image_paths:
+        image = cv2.imread(image_path)
+        image = cv2.resize(image, (15, 15))
+        image_feat = np.resize(image, [15 * 15])
+        image_feat = image_feat.tolist()
+        mean = np.mean(image_feat)
+        image_feat = [(value - mean) for value in image_feat]
+        image_feats.append(image_feat)
+    return image_feats
 
-    return np.array([])
 
 def build_vocabulary(image_paths, vocab_size):
     '''
@@ -112,8 +130,21 @@ def build_vocabulary(image_paths, vocab_size):
     '''
 
     #TODO: Implement this function!
+    cluster_SIFT_features = []
+    sift = cv2.xfeatures2d.SIFT_create()
+    for image_path in tqdm(image_paths, desc="Imaging-SIFT"):
+        image = cv2.imread(image_path)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        locations, SIFT_features = sift.detectAndCompute(gray, None)
+        temp = SIFT_features.tolist()
+        cluster_SIFT_features += temp
+    # cluster_SIFT_features = np.array(cluster_SIFT_features)
+    # kmeans = KMeans(n_clusters=vocab_size, random_state=0).fit(cluster_SIFT_features)
+    cluster_SIFT_features = random.sample(cluster_SIFT_features, 400 * 3)
+    kmeans = KMeans(n_clusters=vocab_size, max_iter=100).fit(cluster_SIFT_features)
+    cluster_centers = kmeans.cluster_centers_
+    return cluster_centers
 
-    return np.array([])
 
 def get_bags_of_words(image_paths):
     '''
@@ -149,8 +180,23 @@ def get_bags_of_words(image_paths):
     print('Loaded vocab from file.')
 
     #TODO: Implement this function!
+    vocab_mat = np.load('vocab.npy')
+    vocab_size = len(image_paths)
+    tree = KDTree(vocab_mat)
+    cluster_SIFT_features = []
+    sift = cv2.xfeatures2d.SIFT_create()
+    for image_path in tqdm(image_paths, desc='SIFT'):
+        image_bag = [0] * vocab_size
+        image = cv2.imread(image_path)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        locations, SIFT_features = sift.detectAndCompute(gray, None)
+        temp = SIFT_features.tolist()
+        nearest_dist, nearest_ind = tree.query(temp, k=1)
+        for index in nearest_ind:
+            image_bag[int(index)] += 1
+        cluster_SIFT_features.append(image_bag)
+    return cluster_SIFT_features
 
-    return np.array([])
 
 def svm_classify(train_image_feats, train_labels, test_image_feats):
     '''
@@ -176,8 +222,11 @@ def svm_classify(train_image_feats, train_labels, test_image_feats):
     '''
 
     # TODO: Implement this function!
+    clf = svm.SVC(C=100, gamma='scale', decision_function_shape="ovr")
+    clf.fit(train_image_feats, train_labels)
+    predicted_categories = clf.predict(test_image_feats)
+    return predicted_categories
 
-    return np.array([])
 
 def nearest_neighbor_classify(train_image_feats, train_labels, test_image_feats):
     '''
@@ -230,4 +279,9 @@ def nearest_neighbor_classify(train_image_feats, train_labels, test_image_feats)
     # 3) Pick the most common label from the k
     # 4) Store that label in a list
 
-    return np.array([])
+    classifier = KNeighborsClassifier(n_neighbors=1, metric="manhattan")
+    # classifier = KNeighborsClassifier(n_neighbors=1, metric="euclidean")
+    classifier.fit(train_image_feats, train_labels)
+    predicted_categories = classifier.predict(test_image_feats)
+    return predicted_categories
+
