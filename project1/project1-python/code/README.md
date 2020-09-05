@@ -1,2 +1,4 @@
 - `install required packages`
 - pip install -r requirement.txt
+- `运行混合图像`
+- python proj1_part2.py
